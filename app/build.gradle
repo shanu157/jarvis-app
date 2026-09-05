@@ -67,8 +67,7 @@ android {
         resValue "string", "launcherName", twaManifest.launcherName
 
         // The URL that will be used when launching the TWA from the Android Launcher
-        def launchUrl = "https://" + twaManifest.hostName + twaManifest.launchUrl
-        resValue "string", "launchUrl", launchUrl
+        resValue "string", "launchUrl", "http://127.0.0.1:5000/"
 
         
 
