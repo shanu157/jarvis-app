@@ -1,480 +1,1264 @@
 package com.jarvis.app;
 
-import android.app.AlertDialog;
+import android.Manifest;
+import android.app.AlarmManager;
+import android.app.DatePickerDialog;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.CountDownTimer;
+import android.provider.Settings;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
 import android.view.Gravity;
 import android.view.View;
-import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.LinearLayout;
-import android.widget.ScrollView;
-import android.widget.Spinner;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.widget.*;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Locale;
+import java.util.*;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String PREFS_NAME = "jarvis_timetable";
-    private static final String TIMETABLE_KEY = "entries";
+    private static final String PREFS = "jarvis_data";
+    private static final String ENTRIES_KEY = "entries";
+    private static final String BRAIN_URL_KEY = "brain_url";
 
+    private final int BG = Color.rgb(5, 10, 19);
+    private final int PANEL = Color.rgb(13, 23, 38);
+    private final int BLUE = Color.rgb(0, 217, 255);
+    private final int WHITE = Color.WHITE;
+    private final int MUTED = Color.rgb(180, 195, 210);
+
+    private LinearLayout root;
     private SharedPreferences preferences;
-    private LinearLayout timetableContainer;
+    private ArrayList<Entry> entries = new ArrayList<>();
 
-    private final String[] days = {
-            "Monday",
-            "Tuesday",
-            "Wednesday",
-            "Thursday",
-            "Friday",
-            "Saturday",
-            "Sunday"
-    };
+    private TextView pageTitle;
+    private TextView pageSubtitle;
+
+    private CountDownTimer activeTimer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        preferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        preferences = getSharedPreferences(PREFS, MODE_PRIVATE);
+        loadEntries();
 
-        showHomeScreen();
+        createNotificationChannel();
+        requestPermissionsIfNeeded();
+
+        showHome();
     }
 
-    private void showHomeScreen() {
-        LinearLayout root = new LinearLayout(this);
+    // ---------------------------------------------------------
+    // DATA MODEL
+    // ---------------------------------------------------------
+
+    private static class Entry {
+
+        String id;
+        String day;
+        String title;
+        String time;
+        String description;
+        boolean reminder;
+
+        Entry(
+                String id,
+                String day,
+                String title,
+                String time,
+                String description,
+                boolean reminder
+        ) {
+            this.id = id;
+            this.day = day;
+            this.title = title;
+            this.time = time;
+            this.description = description;
+            this.reminder = reminder;
+        }
+    }
+
+    private void loadEntries() {
+
+        entries.clear();
+
+        String saved = preferences.getString(ENTRIES_KEY, "[]");
+
+        try {
+
+            JSONArray array = new JSONArray(saved);
+
+            for (int i = 0; i < array.length(); i++) {
+
+                JSONObject object = array.getJSONObject(i);
+
+                entries.add(
+                        new Entry(
+                                object.optString("id"),
+                                object.optString("day"),
+                                object.optString("title"),
+                                object.optString("time"),
+                                object.optString("description"),
+                                object.optBoolean("reminder")
+                        )
+                );
+            }
+
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void saveEntries() {
+
+        JSONArray array = new JSONArray();
+
+        try {
+
+            for (Entry entry : entries) {
+
+                JSONObject object = new JSONObject();
+
+                object.put("id", entry.id);
+                object.put("day", entry.day);
+                object.put("title", entry.title);
+                object.put("time", entry.time);
+                object.put("description", entry.description);
+                object.put("reminder", entry.reminder);
+
+                array.put(object);
+            }
+
+            preferences.edit()
+                    .putString(ENTRIES_KEY, array.toString())
+                    .apply();
+
+        } catch (Exception ignored) {
+        }
+    }
+
+    // ---------------------------------------------------------
+    // MAIN UI
+    // ---------------------------------------------------------
+
+    private void prepareScreen(String title, String subtitle) {
+
+        ScrollView scrollView = new ScrollView(this);
+        scrollView.setBackgroundColor(BG);
+
+        root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(28, 35, 28, 30);
-        root.setBackgroundColor(Color.rgb(5, 11, 20));
+        root.setPadding(24, 28, 24, 35);
+        root.setBackgroundColor(BG);
 
-        TextView title = new TextView(this);
-        title.setText("JARVIS");
-        title.setTextColor(Color.rgb(0, 191, 255));
-        title.setTextSize(32);
-        title.setGravity(Gravity.CENTER);
-        title.setPadding(0, 0, 0, 18);
-        root.addView(title);
+        scrollView.addView(root);
+        setContentView(scrollView);
 
-        TextView date = new TextView(this);
-        String today = new SimpleDateFormat(
+        pageTitle = text(title, 32, BLUE);
+        pageTitle.setGravity(Gravity.CENTER);
+
+        pageSubtitle = text(subtitle, 16, MUTED);
+        pageSubtitle.setGravity(Gravity.CENTER);
+
+        root.addView(pageTitle);
+        root.addView(space(5));
+        root.addView(pageSubtitle);
+        root.addView(space(25));
+    }
+
+    private TextView text(String value, float size, int color) {
+
+        TextView view = new TextView(this);
+        view.setText(value);
+        view.setTextSize(size);
+        view.setTextColor(color);
+        view.setPadding(0, 6, 0, 6);
+
+        return view;
+    }
+
+    private Button button(String label) {
+
+        Button button = new Button(this);
+
+        button.setText(label);
+        button.setTextColor(WHITE);
+        button.setTextSize(14);
+        button.setAllCaps(false);
+        button.setBackgroundColor(Color.rgb(55, 65, 80));
+        button.setPadding(15, 8, 15, 8);
+
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        58
+                );
+
+        params.setMargins(0, 7, 0, 7);
+        button.setLayoutParams(params);
+
+        return button;
+    }
+
+    private Space space(int height) {
+
+        Space space = new Space(this);
+
+        space.setLayoutParams(
+                new LinearLayout.LayoutParams(
+                        1,
+                        height
+                )
+        );
+
+        return space;
+    }
+
+    private LinearLayout panel() {
+
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(20, 20, 20, 20);
+        panel.setBackgroundColor(PANEL);
+
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                );
+
+        params.setMargins(0, 8, 0, 8);
+        panel.setLayoutParams(params);
+
+        return panel;
+    }
+
+    // ---------------------------------------------------------
+    // HOME
+    // ---------------------------------------------------------
+
+    private void showHome() {
+
+        String date = new SimpleDateFormat(
                 "EEEE, dd MMMM yyyy",
                 Locale.getDefault()
         ).format(new Date());
 
-        date.setText(today);
-        date.setTextColor(Color.WHITE);
-        date.setTextSize(18);
-        date.setGravity(Gravity.CENTER);
-        date.setPadding(0, 0, 0, 25);
-        root.addView(date);
+        prepareScreen("J A R V I S", date);
 
-        TextView status = new TextView(this);
-        status.setText(
-                "Jarvis native Android mode\n\n" +
-                "Your personal assistant is starting."
+        TextView status = text(
+                "● SYSTEM ONLINE\n\nYour personal AI assistant is ready.",
+                18,
+                WHITE
         );
-        status.setTextColor(Color.LTGRAY);
-        status.setTextSize(17);
-        status.setPadding(0, 0, 0, 25);
+
+        status.setGravity(Gravity.CENTER);
         root.addView(status);
+        root.addView(space(20));
 
-        Button todayButton = new Button(this);
-        todayButton.setText("TODAY'S TIMETABLE");
-        todayButton.setOnClickListener(v -> showTodayTimetable());
-        root.addView(todayButton);
+        LinearLayout todayPanel = panel();
 
-        Button manageButton = new Button(this);
-        manageButton.setText("EDIT TIMETABLE");
-        manageButton.setOnClickListener(v -> showTimetableManager());
-        root.addView(manageButton);
-
-        Button addButton = new Button(this);
-        addButton.setText("ADD NEW ENTRY");
-        addButton.setOnClickListener(v -> showEntryDialog(-1));
-        root.addView(addButton);
-
-        Button notificationButton = new Button(this);
-        notificationButton.setText("TEST NOTIFICATION");
-        notificationButton.setOnClickListener(
-                v -> Toast.makeText(
-                        this,
-                        "Notification test can be added next.",
-                        Toast.LENGTH_SHORT
-                ).show()
+        todayPanel.addView(
+                text(
+                        "TODAY'S SCHEDULE",
+                        19,
+                        BLUE
+                )
         );
-        root.addView(notificationButton);
 
-        ScrollView scrollView = new ScrollView(this);
-        scrollView.addView(root);
-
-        setContentView(scrollView);
-    }
-
-    private void showTodayTimetable() {
         String today = new SimpleDateFormat(
                 "EEEE",
-                Locale.getDefault()
+                Locale.ENGLISH
         ).format(new Date());
 
-        ArrayList<TimetableEntry> entries = loadEntries();
+        ArrayList<Entry> todayEntries = getEntriesForDay(today);
 
-        StringBuilder message = new StringBuilder();
+        if (todayEntries.isEmpty()) {
 
-        message.append(today).append("'s Timetable\n\n");
+            todayPanel.addView(
+                    text(
+                            "No entries for today.",
+                            16,
+                            MUTED
+                    )
+            );
 
-        boolean found = false;
+        } else {
 
-        for (TimetableEntry entry : entries) {
-            if (entry.day.equals(today)) {
-                message.append("• ")
-                        .append(entry.time)
-                        .append(" - ")
-                        .append(entry.title)
-                        .append("\n");
+            for (Entry entry : todayEntries) {
 
-                if (!entry.description.isEmpty()) {
-                    message.append("  ")
-                            .append(entry.description)
-                            .append("\n");
-                }
-
-                message.append("\n");
-                found = true;
+                todayPanel.addView(
+                        text(
+                                "• " + entry.time + "  " + entry.title,
+                                16,
+                                WHITE
+                        )
+                );
             }
         }
 
-        if (!found) {
-            message.append("No timetable entry for today.");
-        }
+        root.addView(todayPanel);
 
-        new AlertDialog.Builder(this)
-                .setTitle("Today's Timetable")
-                .setMessage(message.toString())
-                .setPositiveButton("OK", null)
-                .setNegativeButton(
-                        "Edit Timetable",
-                        (dialog, which) -> showTimetableManager()
-                )
-                .show();
+        Button timetable = button("▣  Today's Timetable");
+        timetable.setOnClickListener(v -> showToday());
+        root.addView(timetable);
+
+        Button edit = button("✎  Edit Timetable");
+        edit.setOnClickListener(v -> showEditor());
+        root.addView(edit);
+
+        Button add = button("＋  Add New Entry");
+        add.setOnClickListener(v -> showEntryDialog(null));
+        root.addView(add);
+
+        Button timer = button("◷  Countdown Timer");
+        timer.setOnClickListener(v -> showTimerScreen());
+        root.addView(timer);
+
+        Button calendar = button("▦  Calendar");
+        calendar.setOnClickListener(v -> showCalendar());
+        root.addView(calendar);
+
+        Button voice = button("◉  Voice Assistant");
+        voice.setOnClickListener(v -> startVoiceAssistant());
+        root.addView(voice);
+
+        Button brain = button("⌁  Jarvis Brain");
+        brain.setOnClickListener(v -> showBrainDialog());
+        root.addView(brain);
+
+        Button settings = button("⚙  Settings");
+        settings.setOnClickListener(v -> showSettings());
+        root.addView(settings);
     }
 
-    private void showTimetableManager() {
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(20, 20, 20, 20);
+    // ---------------------------------------------------------
+    // CURRENT DAY
+    // ---------------------------------------------------------
 
-        ScrollView scrollView = new ScrollView(this);
-        scrollView.addView(root);
+    private void showToday() {
 
-        TextView heading = new TextView(this);
-        heading.setText("Your Timetable");
-        heading.setTextSize(24);
-        heading.setTextColor(Color.WHITE);
-        heading.setPadding(0, 0, 0, 20);
-        root.addView(heading);
+        String today = new SimpleDateFormat(
+                "EEEE",
+                Locale.ENGLISH
+        ).format(new Date());
 
-        ArrayList<TimetableEntry> entries = loadEntries();
+        prepareScreen(
+                today.toUpperCase(Locale.ENGLISH),
+                "Your schedule for today"
+        );
 
-        if (entries.isEmpty()) {
-            TextView empty = new TextView(this);
-            empty.setText("No entries yet. Add your first timetable entry.");
-            empty.setTextSize(17);
-            empty.setPadding(0, 0, 0, 20);
-            root.addView(empty);
+        ArrayList<Entry> todayEntries = getEntriesForDay(today);
+
+        if (todayEntries.isEmpty()) {
+
+            root.addView(
+                    text(
+                            "Nothing scheduled today.",
+                            18,
+                            MUTED
+                    )
+            );
+
+        } else {
+
+            for (Entry entry : todayEntries) {
+
+                LinearLayout card = panel();
+
+                card.addView(
+                        text(
+                                entry.time + "  •  " + entry.title,
+                                19,
+                                BLUE
+                        )
+                );
+
+                if (!entry.description.isEmpty()) {
+
+                    card.addView(
+                            text(
+                                    entry.description,
+                                    15,
+                                    MUTED
+                            )
+                    );
+                }
+
+                root.addView(card);
+            }
         }
 
-        for (int i = 0; i < entries.size(); i++) {
-            final int index = i;
-            TimetableEntry entry = entries.get(i);
-
-            LinearLayout item = new LinearLayout(this);
-            item.setOrientation(LinearLayout.VERTICAL);
-            item.setPadding(0, 12, 0, 12);
-
-            TextView text = new TextView(this);
-            text.setText(
-                    entry.day + "\n" +
-                    entry.time + " - " + entry.title +
-                    (entry.description.isEmpty()
-                            ? ""
-                            : "\n" + entry.description)
-            );
-            text.setTextSize(17);
-            text.setTextColor(Color.WHITE);
-            item.addView(text);
-
-            LinearLayout buttons = new LinearLayout(this);
-            buttons.setOrientation(LinearLayout.HORIZONTAL);
-
-            Button editButton = new Button(this);
-            editButton.setText("EDIT");
-            editButton.setOnClickListener(
-                    v -> showEntryDialog(index)
-            );
-
-            Button deleteButton = new Button(this);
-            deleteButton.setText("DELETE");
-            deleteButton.setOnClickListener(
-                    v -> confirmDelete(index)
-            );
-
-            buttons.addView(editButton);
-            buttons.addView(deleteButton);
-            item.addView(buttons);
-
-            root.addView(item);
-        }
-
-        Button addButton = new Button(this);
-        addButton.setText("ADD ENTRY");
-        addButton.setOnClickListener(v -> showEntryDialog(-1));
-        root.addView(addButton);
-
-        new AlertDialog.Builder(this)
-                .setView(scrollView)
-                .setPositiveButton("CLOSE", null)
-                .show();
+        Button back = button("← Back Home");
+        back.setOnClickListener(v -> showHome());
+        root.addView(back);
     }
 
-    private void showEntryDialog(int editIndex) {
-        ArrayList<TimetableEntry> entries = loadEntries();
+    private ArrayList<Entry> getEntriesForDay(String day) {
 
-        TimetableEntry oldEntry = null;
+        ArrayList<Entry> result = new ArrayList<>();
 
-        if (editIndex >= 0 && editIndex < entries.size()) {
-            oldEntry = entries.get(editIndex);
+        for (Entry entry : entries) {
+
+            if (entry.day.equalsIgnoreCase(day)) {
+                result.add(entry);
+            }
         }
 
-        LinearLayout form = new LinearLayout(this);
-        form.setOrientation(LinearLayout.VERTICAL);
-        form.setPadding(35, 15, 35, 10);
+        Collections.sort(
+                result,
+                Comparator.comparing(entry -> entry.time)
+        );
+
+        return result;
+    }
+
+    // ---------------------------------------------------------
+    // EDITOR
+    // ---------------------------------------------------------
+
+    private void showEditor() {
+
+        prepareScreen(
+                "TIMETABLE EDITOR",
+                "Create and manage your schedule"
+        );
+
+        String[] days = {
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+        };
+
+        for (String day : days) {
+
+            LinearLayout dayPanel = panel();
+
+            dayPanel.addView(
+                    text(
+                            day.toUpperCase(Locale.ENGLISH),
+                            18,
+                            BLUE
+                    )
+            );
+
+            ArrayList<Entry> dayEntries = getEntriesForDay(day);
+
+            if (dayEntries.isEmpty()) {
+
+                dayPanel.addView(
+                        text(
+                                "No entries",
+                                14,
+                                MUTED
+                        )
+                );
+
+            } else {
+
+                for (Entry entry : dayEntries) {
+
+                    Button entryButton = button(
+                            entry.time + "  " + entry.title
+                    );
+
+                    entryButton.setOnClickListener(
+                            v -> showEntryDialog(entry)
+                    );
+
+                    dayPanel.addView(entryButton);
+                }
+            }
+
+            root.addView(dayPanel);
+        }
+
+        Button add = button("＋ Add Entry");
+        add.setOnClickListener(v -> showEntryDialog(null));
+        root.addView(add);
+
+        Button back = button("← Back Home");
+        back.setOnClickListener(v -> showHome());
+        root.addView(back);
+    }
+
+    private void showEntryDialog(Entry editing) {
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(25, 10, 25, 5);
 
         Spinner daySpinner = new Spinner(this);
 
-        ArrayAdapter<String> dayAdapter = new ArrayAdapter<>(
-                this,
-                android.R.layout.simple_spinner_dropdown_item,
-                days
-        );
+        String[] days = {
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+        };
 
-        daySpinner.setAdapter(dayAdapter);
+        ArrayAdapter<String> adapter =
+                new ArrayAdapter<>(
+                        this,
+                        android.R.layout.simple_spinner_dropdown_item,
+                        days
+                );
 
-        if (oldEntry != null) {
+        daySpinner.setAdapter(adapter);
+
+        EditText titleInput = new EditText(this);
+        titleInput.setHint("Activity name");
+
+        EditText timeInput = new EditText(this);
+        timeInput.setHint("Time, example: 08:00 AM");
+
+        EditText descriptionInput = new EditText(this);
+        descriptionInput.setHint("Description");
+
+        CheckBox reminderCheck = new CheckBox(this);
+        reminderCheck.setText("Create reminder notification");
+        reminderCheck.setTextColor(WHITE);
+
+        layout.addView(daySpinner);
+        layout.addView(titleInput);
+        layout.addView(timeInput);
+        layout.addView(descriptionInput);
+        layout.addView(reminderCheck);
+
+        if (editing != null) {
+
+            titleInput.setText(editing.title);
+            timeInput.setText(editing.time);
+            descriptionInput.setText(editing.description);
+            reminderCheck.setChecked(editing.reminder);
+
             for (int i = 0; i < days.length; i++) {
-                if (days[i].equals(oldEntry.day)) {
+
+                if (days[i].equals(editing.day)) {
                     daySpinner.setSelection(i);
                     break;
                 }
             }
         }
 
-        form.addView(daySpinner);
+        AlertDialog dialog =
+                new AlertDialog.Builder(this)
+                        .setTitle(
+                                editing == null
+                                        ? "Add Timetable Entry"
+                                        : "Edit Timetable Entry"
+                        )
+                        .setView(layout)
+                        .setPositiveButton(
+                                "SAVE",
+                                null
+                        )
+                        .setNegativeButton(
+                                "CANCEL",
+                                null
+                        )
+                        .create();
 
-        EditText titleInput = new EditText(this);
-        titleInput.setHint("Activity name");
-        titleInput.setSingleLine(true);
+        dialog.setOnShowListener(
+                ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                        .setOnClickListener(v -> {
 
-        if (oldEntry != null) {
-            titleInput.setText(oldEntry.title);
-        }
+                            String title = titleInput.getText()
+                                    .toString()
+                                    .trim();
 
-        form.addView(titleInput);
+                            String time = timeInput.getText()
+                                    .toString()
+                                    .trim();
 
-        EditText timeInput = new EditText(this);
-        timeInput.setHint("Time, e.g. 8:00 AM - 10:00 AM");
-        timeInput.setSingleLine(true);
+                            String description = descriptionInput.getText()
+                                    .toString()
+                                    .trim();
 
-        if (oldEntry != null) {
-            timeInput.setText(oldEntry.time);
-        }
+                            if (title.isEmpty() || time.isEmpty()) {
 
-        form.addView(timeInput);
+                                Toast.makeText(
+                                        this,
+                                        "Activity and time are required.",
+                                        Toast.LENGTH_SHORT
+                                ).show();
 
-        EditText descriptionInput = new EditText(this);
-        descriptionInput.setHint("Description, optional");
-        descriptionInput.setSingleLine(false);
+                                return;
+                            }
 
-        if (oldEntry != null) {
-            descriptionInput.setText(oldEntry.description);
-        }
+                            if (editing == null) {
 
-        form.addView(descriptionInput);
+                                Entry entry = new Entry(
+                                        UUID.randomUUID().toString(),
+                                        daySpinner.getSelectedItem().toString(),
+                                        title,
+                                        time,
+                                        description,
+                                        reminderCheck.isChecked()
+                                );
 
-        String dialogTitle =
-                editIndex >= 0
-                        ? "Edit Timetable Entry"
-                        : "Add Timetable Entry";
+                                entries.add(entry);
 
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle(dialogTitle)
-                .setView(form)
-                .setNegativeButton("CANCEL", null)
-                .setPositiveButton(
-                        "SAVE",
-                        null
-                )
-                .create();
+                                if (entry.reminder) {
+                                    scheduleReminder(entry);
+                                }
 
-        dialog.setOnShowListener(d -> {
-            Button saveButton = dialog.getButton(
-                    AlertDialog.BUTTON_POSITIVE
+                            } else {
+
+                                editing.day =
+                                        daySpinner.getSelectedItem().toString();
+
+                                editing.title = title;
+                                editing.time = time;
+                                editing.description = description;
+                                editing.reminder = reminderCheck.isChecked();
+
+                                if (editing.reminder) {
+                                    scheduleReminder(editing);
+                                }
+                            }
+
+                            saveEntries();
+
+                            dialog.dismiss();
+                            showEditor();
+                        })
+        );
+
+        if (editing != null) {
+
+            dialog.setNeutralButton(
+                    "DELETE",
+                    (d, which) -> {
+
+                        entries.remove(editing);
+                        saveEntries();
+                        showEditor();
+                    }
             );
-
-            saveButton.setOnClickListener(v -> {
-                String day = daySpinner.getSelectedItem().toString();
-                String title = titleInput.getText().toString().trim();
-                String time = timeInput.getText().toString().trim();
-                String description =
-                        descriptionInput.getText().toString().trim();
-
-                if (title.isEmpty() || time.isEmpty()) {
-                    Toast.makeText(
-                            this,
-                            "Please enter activity name and time.",
-                            Toast.LENGTH_SHORT
-                    ).show();
-                    return;
-                }
-
-                TimetableEntry newEntry = new TimetableEntry(
-                        day,
-                        title,
-                        time,
-                        description
-                );
-
-                if (editIndex >= 0 && editIndex < entries.size()) {
-                    entries.set(editIndex, newEntry);
-                } else {
-                    entries.add(newEntry);
-                }
-
-                saveEntries(entries);
-
-                dialog.dismiss();
-
-                Toast.makeText(
-                        this,
-                        "Timetable saved.",
-                        Toast.LENGTH_SHORT
-                ).show();
-            });
-        });
+        }
 
         dialog.show();
     }
 
-    private void confirmDelete(int index) {
-        ArrayList<TimetableEntry> entries = loadEntries();
+    // ---------------------------------------------------------
+    // REMINDERS
+    // ---------------------------------------------------------
 
-        if (index < 0 || index >= entries.size()) {
+    private void createNotificationChannel() {
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+
+            NotificationChannel channel =
+                    new NotificationChannel(
+                            ReminderReceiver.CHANNEL_ID,
+                            "Jarvis Reminders",
+                            NotificationManager.IMPORTANCE_HIGH
+                    );
+
+            NotificationManager manager =
+                    getSystemService(NotificationManager.class);
+
+            if (manager != null) {
+                manager.createNotificationChannel(channel);
+            }
+        }
+    }
+
+    private void scheduleReminder(Entry entry) {
+
+        Toast.makeText(
+                this,
+                "Reminder saved. Use Android alarm permissions if needed.",
+                Toast.LENGTH_SHORT
+        ).show();
+
+        Calendar calendar = Calendar.getInstance();
+
+        String[] timeParts = entry.time
+                .replace(".", "")
+                .split(" ");
+
+        try {
+
+            String clock = timeParts[0];
+            String[] hm = clock.split(":");
+
+            int hour = Integer.parseInt(hm[0]);
+            int minute = Integer.parseInt(hm[1]);
+
+            if (timeParts.length > 1) {
+
+                String ampm = timeParts[1].toUpperCase(Locale.ENGLISH);
+
+                if (ampm.equals("PM") && hour < 12) {
+                    hour += 12;
+                }
+
+                if (ampm.equals("AM") && hour == 12) {
+                    hour = 0;
+                }
+            }
+
+            calendar.set(Calendar.HOUR_OF_DAY, hour);
+            calendar.set(Calendar.MINUTE, minute);
+            calendar.set(Calendar.SECOND, 0);
+
+            if (calendar.before(Calendar.getInstance())) {
+                calendar.add(Calendar.DAY_OF_YEAR, 1);
+            }
+
+            Intent intent = new Intent(this, ReminderReceiver.class);
+            intent.putExtra("title", entry.title);
+
+            PendingIntent pendingIntent =
+                    PendingIntent.getBroadcast(
+                            this,
+                            entry.id.hashCode(),
+                            intent,
+                            PendingIntent.FLAG_UPDATE_CURRENT |
+                                    PendingIntent.FLAG_IMMUTABLE
+                    );
+
+            AlarmManager alarmManager =
+                    (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+
+            if (alarmManager != null) {
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+
+                    alarmManager.setExactAndAllowWhileIdle(
+                            AlarmManager.RTC_WAKEUP,
+                            calendar.getTimeInMillis(),
+                            pendingIntent
+                    );
+
+                } else {
+
+                    alarmManager.setExact(
+                            AlarmManager.RTC_WAKEUP,
+                            calendar.getTimeInMillis(),
+                            pendingIntent
+                    );
+                }
+            }
+
+        } catch (Exception ignored) {
+
+            Toast.makeText(
+                    this,
+                    "Use time format like 08:30 AM",
+                    Toast.LENGTH_LONG
+            ).show();
+        }
+    }
+
+    // ---------------------------------------------------------
+    // COUNTDOWN TIMER
+    // ---------------------------------------------------------
+
+    private void showTimerScreen() {
+
+        prepareScreen(
+                "COUNTDOWN TIMER",
+                "Focus mode"
+        );
+
+        EditText minutesInput = new EditText(this);
+        minutesInput.setHint("Minutes");
+        minutesInput.setInputType(2);
+
+        root.addView(minutesInput);
+
+        TextView countdown = text(
+                "00:00",
+                45,
+                BLUE
+        );
+
+        countdown.setGravity(Gravity.CENTER);
+        root.addView(countdown);
+
+        Button start = button("▶ Start Timer");
+
+        start.setOnClickListener(v -> {
+
+            try {
+
+                long minutes = Long.parseLong(
+                        minutesInput.getText().toString()
+                );
+
+                if (activeTimer != null) {
+                    activeTimer.cancel();
+                }
+
+                activeTimer = new CountDownTimer(
+                        minutes * 60 * 1000,
+                        1000
+                ) {
+
+                    @Override
+                    public void onTick(long millisUntilFinished) {
+
+                        long totalSeconds =
+                                millisUntilFinished / 1000;
+
+                        long mins = totalSeconds / 60;
+                        long secs = totalSeconds % 60;
+
+                        countdown.setText(
+                                String.format(
+                                        Locale.getDefault(),
+                                        "%02d:%02d",
+                                        mins,
+                                        secs
+                                )
+                        );
+                    }
+
+                    @Override
+                    public void onFinish() {
+
+                        countdown.setText("TIME COMPLETE");
+
+                        Toast.makeText(
+                                MainActivity.this,
+                                "Jarvis timer completed.",
+                                Toast.LENGTH_LONG
+                        ).show();
+                    }
+
+                }.start();
+
+            } catch (Exception ignored) {
+
+                Toast.makeText(
+                        this,
+                        "Enter a valid number of minutes.",
+                        Toast.LENGTH_SHORT
+                ).show();
+            }
+        });
+
+        root.addView(start);
+
+        Button stop = button("■ Stop Timer");
+
+        stop.setOnClickListener(v -> {
+
+            if (activeTimer != null) {
+                activeTimer.cancel();
+            }
+
+            countdown.setText("00:00");
+        });
+
+        root.addView(stop);
+
+        Button back = button("← Back Home");
+        back.setOnClickListener(v -> showHome());
+        root.addView(back);
+    }
+
+    // ---------------------------------------------------------
+    // CALENDAR
+    // ---------------------------------------------------------
+
+    private void showCalendar() {
+
+        prepareScreen(
+                "CALENDAR",
+                "Choose a date"
+        );
+
+        Button chooseDate = button("▦ Select Date");
+
+        chooseDate.setOnClickListener(v -> {
+
+            Calendar now = Calendar.getInstance();
+
+            DatePickerDialog picker =
+                    new DatePickerDialog(
+                            this,
+                            (view, year, month, dayOfMonth) -> {
+
+                                Calendar selected = Calendar.getInstance();
+
+                                selected.set(
+                                        year,
+                                        month,
+                                        dayOfMonth
+                                );
+
+                                String formatted =
+                                        new SimpleDateFormat(
+                                                "EEEE, dd MMMM yyyy",
+                                                Locale.getDefault()
+                                        ).format(selected.getTime());
+
+                                new AlertDialog.Builder(this)
+                                        .setTitle(formatted)
+                                        .setMessage(
+                                                "Use the timetable editor to create recurring weekly activities."
+                                        )
+                                        .setPositiveButton("OK", null)
+                                        .show();
+                            },
+                            now.get(Calendar.YEAR),
+                            now.get(Calendar.MONTH),
+                            now.get(Calendar.DAY_OF_MONTH)
+                    );
+
+            picker.show();
+        });
+
+        root.addView(chooseDate);
+
+        Button back = button("← Back Home");
+        back.setOnClickListener(v -> showHome());
+        root.addView(back);
+    }
+
+    // ---------------------------------------------------------
+    // VOICE ASSISTANT
+    // ---------------------------------------------------------
+
+    private void startVoiceAssistant() {
+
+        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+
+            Toast.makeText(
+                    this,
+                    "Voice recognition is not available on this phone.",
+                    Toast.LENGTH_LONG
+            ).show();
+
             return;
         }
 
-        TimetableEntry entry = entries.get(index);
+        Intent intent =
+                new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+
+        intent.putExtra(
+                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+        );
+
+        intent.putExtra(
+                RecognizerIntent.EXTRA_PROMPT,
+                "Speak to Jarvis"
+        );
+
+        startActivityForResult(intent, 900);
+    }
+
+    @Override
+    protected void onActivityResult(
+            int requestCode,
+            int resultCode,
+            Intent data
+    ) {
+
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == 900 &&
+                resultCode == RESULT_OK &&
+                data != null) {
+
+            ArrayList<String> results =
+                    data.getStringArrayListExtra(
+                            RecognizerIntent.EXTRA_RESULTS
+                    );
+
+            if (results != null && !results.isEmpty()) {
+
+                String command = results.get(0);
+
+                new AlertDialog.Builder(this)
+                        .setTitle("You said")
+                        .setMessage(command)
+                        .setPositiveButton(
+                                "Send to Brain",
+                                (dialog, which) -> sendToBrain(command)
+                        )
+                        .setNegativeButton("Close", null)
+                        .show();
+            }
+        }
+    }
+
+    // ---------------------------------------------------------
+    // BRAIN CONNECTION
+    // ---------------------------------------------------------
+
+    private void showBrainDialog() {
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(25, 10, 25, 10);
+
+        EditText urlInput = new EditText(this);
+
+        urlInput.setHint(
+                "Brain URL, example: https://your-server.com/chat"
+        );
+
+        urlInput.setText(
+                preferences.getString(BRAIN_URL_KEY, "")
+        );
+
+        layout.addView(urlInput);
 
         new AlertDialog.Builder(this)
-                .setTitle("Delete Entry?")
+                .setTitle("Connect Jarvis Brain")
                 .setMessage(
-                        entry.day + "\n" +
-                        entry.time + " - " +
-                        entry.title
+                        "Enter your backend API URL. Never place secret API keys inside the Android app."
                 )
-                .setNegativeButton("CANCEL", null)
+                .setView(layout)
                 .setPositiveButton(
-                        "DELETE",
+                        "SAVE",
                         (dialog, which) -> {
-                            entries.remove(index);
-                            saveEntries(entries);
-                            showTimetableManager();
+
+                            preferences.edit()
+                                    .putString(
+                                            BRAIN_URL_KEY,
+                                            urlInput.getText().toString().trim()
+                                    )
+                                    .apply();
+
+                            Toast.makeText(
+                                    this,
+                                    "Brain URL saved.",
+                                    Toast.LENGTH_SHORT
+                            ).show();
                         }
                 )
+                .setNegativeButton("CANCEL", null)
                 .show();
     }
 
-    private ArrayList<TimetableEntry> loadEntries() {
-        ArrayList<TimetableEntry> entries = new ArrayList<>();
+    private void sendToBrain(String message) {
 
-        String saved = preferences.getString(
-                TIMETABLE_KEY,
-                "[]"
+        String brainUrl =
+                preferences.getString(BRAIN_URL_KEY, "");
+
+        if (brainUrl.isEmpty()) {
+
+            Toast.makeText(
+                    this,
+                    "First configure your Jarvis Brain URL.",
+                    Toast.LENGTH_LONG
+            ).show();
+
+            showBrainDialog();
+            return;
+        }
+
+        Toast.makeText(
+                this,
+                "Sending command to Jarvis Brain...",
+                Toast.LENGTH_SHORT
+        ).show();
+
+        new Thread(() -> {
+
+            try {
+
+                URL url = new URL(brainUrl);
+
+                HttpURLConnection connection =
+                        (HttpURLConnection) url.openConnection();
+
+                connection.setRequestMethod("POST");
+                connection.setConnectTimeout(10000);
+                connection.setReadTimeout(20000);
+                connection.setDoOutput(true);
+                connection.setRequestProperty(
+                        "Content-Type",
+                        "application/json"
+                );
+
+                JSONObject body = new JSONObject();
+                body.put("message", message);
+
+                OutputStream output =
+                        connection.getOutputStream();
+
+                output.write(body.toString().getBytes());
+                output.flush();
+                output.close();
+
+                BufferedReader reader =
+                        new BufferedReader(
+                                new InputStreamReader(
+                                        connection.getInputStream()
+                                )
+                        );
+
+                StringBuilder response = new StringBuilder();
+                String line;
+
+                while ((line = reader.readLine()) != null) {
+                    response.append(line);
+                }
+
+                reader.close();
+
+                runOnUiThread(() -> {
+
+                    new AlertDialog.Builder(this)
+                            .setTitle("JARVIS BRAIN")
+                            .setMessage(response.toString())
+                            .setPositiveButton("OK", null)
+                            .show();
+                });
+
+                connection.disconnect();
+
+            } catch (Exception error) {
+
+                runOnUiThread(() -> {
+
+                    new AlertDialog.Builder(this)
+                            .setTitle("Brain Connection Failed")
+                            .setMessage(error.getMessage())
+                            .setPositiveButton("OK", null)
+                            .show();
+                });
+            }
+
+        }).start();
+    }
+
+    // ---------------------------------------------------------
+    // SETTINGS
+    // ---------------------------------------------------------
+
+    private void showSettings() {
+
+        prepareScreen(
+                "SETTINGS",
+                "Customize your Jarvis assistant"
         );
 
-        try {
-            JSONArray array = new JSONArray(saved);
+        Button notifications = button("Notification Settings");
 
-            for (int i = 0; i < array.length(); i++) {
-                JSONObject object = array.getJSONObject(i);
+        notifications.setOnClickListener(v -> {
 
-                entries.add(
-                        new TimetableEntry(
-                                object.getString("day"),
-                                object.getString("title"),
-                                object.getString("time"),
-                                object.optString("description", "")
-                        )
+            Intent intent =
+                    new Intent(
+                            Settings.ACTION_APP_NOTIFICATION_SETTINGS
+                    );
+
+            intent.putExtra(
+                    Settings.EXTRA_APP_PACKAGE,
+                    getPackageName()
+            );
+
+            startActivity(intent);
+        });
+
+        root.addView(notifications);
+
+        Button brain = button("Configure Brain URL");
+        brain.setOnClickListener(v -> showBrainDialog());
+        root.addView(brain);
+
+        Button clear = button("Clear All Timetable Data");
+
+        clear.setOnClickListener(v -> {
+
+            new AlertDialog.Builder(this)
+                    .setTitle("Clear timetable?")
+                    .setMessage("All saved entries will be deleted.")
+                    .setPositiveButton(
+                            "DELETE",
+                            (dialog, which) -> {
+
+                                entries.clear();
+                                saveEntries();
+                                showHome();
+                            }
+                    )
+                    .setNegativeButton("CANCEL", null)
+                    .show();
+        });
+
+        root.addView(clear);
+
+        Button back = button("← Back Home");
+        back.setOnClickListener(v -> showHome());
+        root.addView(back);
+    }
+
+    // ---------------------------------------------------------
+    // PERMISSIONS
+    // ---------------------------------------------------------
+
+    private void requestPermissionsIfNeeded() {
+
+        ArrayList<String> permissions = new ArrayList<>();
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED) {
+
+                permissions.add(
+                        Manifest.permission.POST_NOTIFICATIONS
                 );
             }
-
-        } catch (Exception e) {
-            e.printStackTrace();
         }
 
-        return entries;
-    }
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.RECORD_AUDIO
+        ) != PackageManager.PERMISSION_GRANTED) {
 
-    private void saveEntries(ArrayList<TimetableEntry> entries) {
-        JSONArray array = new JSONArray();
-
-        try {
-            for (TimetableEntry entry : entries) {
-                JSONObject object = new JSONObject();
-
-                object.put("day", entry.day);
-                object.put("title", entry.title);
-                object.put("time", entry.time);
-                object.put("description", entry.description);
-
-                array.put(object);
-            }
-
-            preferences.edit()
-                    .putString(TIMETABLE_KEY, array.toString())
-                    .apply();
-
-        } catch (Exception e) {
-            e.printStackTrace();
+            permissions.add(
+                    Manifest.permission.RECORD_AUDIO
+            );
         }
-    }
 
-    private static class TimetableEntry {
-        String day;
-        String title;
-        String time;
-        String description;
+        if (!permissions.isEmpty()) {
 
-        TimetableEntry(
-                String day,
-                String title,
-                String time,
-                String description
-        ) {
-            this.day = day;
-            this.title = title;
-            this.time = time;
-            this.description = description;
+            ActivityCompat.requestPermissions(
+                    this,
+                    permissions.toArray(new String[0]),
+                    700
+            );
         }
     }
 }
