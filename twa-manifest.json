@@ -1,6 +1,6 @@
 {
   "packageId": "com.jarvis.app",
-  "host": "127.0.0.1",
+  "host": "shanu11.pythonanywhere.com",
   "name": "jarvis",
   "launcherName": "Jarvis",
   "display": "standalone",
@@ -13,7 +13,7 @@
   "backgroundColor": "#050B14",
   "enableNotifications": true,
   "startUrl": "/",
-  "iconUrl": "http://127.0.0.1:5000/static/icon.png",
+  "iconUrl": "https://shanu11.pythonanywhere.com/static/icon.png",
   "splashScreenFadeOutDuration": 300,
   "signingKey": {
     "path": "/data/data/com.termux/files/home/android.keystore",
@@ -23,7 +23,7 @@
   "appVersionCode": 1,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
-  "webManifestUrl": "http://127.0.0.1:5000/static/manifest.json",
+  "webManifestUrl": "https://shanu11.pythonanywhere.com/static/manifest.json",
   "fallbackType": "customtabs",
   "features": {
     "locationDelegation": {
@@ -36,7 +36,7 @@
   "enableSiteSettingsShortcut": true,
   "isChromeOSOnly": false,
   "isMetaQuest": false,
-  "fullScopeUrl": "http://127.0.0.1:5000/static/",
+  "fullScopeUrl": "https://shanu11.pythonanywhere.com/static/",
   "minSdkVersion": 21,
   "orientation": "default",
   "fingerprints": [],
