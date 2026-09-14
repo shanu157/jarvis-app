@@ -10,10 +10,8 @@ android {
         applicationId "com.jarvis.app"
         minSdk 23
         targetSdk 35
-        versionCode 5
-        versionName "5.0"
-
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        versionCode 4
+        versionName "4.0"
     }
 
     buildTypes {
@@ -27,8 +25,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
     }
 }
 
