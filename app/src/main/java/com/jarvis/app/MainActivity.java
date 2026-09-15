@@ -656,7 +656,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (editing != null) {
 
-            builder.setNeutralButton(
+            dialog.setButton(AlertDialog.BUTTON_NEUTRAL, 
                     "DELETE",
                     (d, which) -> {
 
