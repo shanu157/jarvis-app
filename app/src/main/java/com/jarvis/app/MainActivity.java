@@ -32,12 +32,22 @@ import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String PREFS = "jarvis_data";
     private static final String ENTRIES_KEY = "entries";
     private static final String BRAIN_URL_KEY = "brain_url";
+    private final ExecutorService brainExecutor = Executors.newSingleThreadExecutor();
 
     private static final int BG = Color.rgb(4, 8, 15);
     private static final int PANEL = Color.rgb(11, 18, 30);
@@ -578,31 +588,203 @@ public class MainActivity extends AppCompatActivity {
         input.setHint("Ask Jarvis...");
         input.setTextColor(WHITE);
         input.setHintTextColor(MUTED);
+        input.setSingleLine(false);
+        input.setMinLines(1);
+        input.setMaxLines(5);
 
         layout.addView(input);
 
         new AlertDialog.Builder(this)
                 .setTitle("JARVIS BRAIN")
                 .setMessage(
-                        "Connect this screen to your Jarvis Brain server.\n\n" +
-                        "Current architecture:\n" +
                         "Android → Jarvis Brain → AI"
                 )
                 .setView(layout)
                 .setPositiveButton("SEND", (dialog, which) -> {
                     String text = input.getText().toString().trim();
 
-                    if (!text.isEmpty()) {
+                    if (text.isEmpty()) {
                         Toast.makeText(
                                 this,
-                                "Sending to Jarvis Brain...",
+                                "Type something for Jarvis.",
                                 Toast.LENGTH_SHORT
                         ).show();
+                        return;
                     }
+
+                    sendToBrain(text);
                 })
                 .setNegativeButton("CLOSE", null)
                 .show();
     }
+
+    private void sendToBrain(String message) {
+        Toast.makeText(
+                this,
+                "Jarvis is thinking...",
+                Toast.LENGTH_SHORT
+        ).show();
+
+        String savedUrl = preferences.getString(
+                BRAIN_URL_KEY,
+                "https://shanu11.pythonanywhere.com"
+        );
+
+        final String brainUrl;
+
+        if (savedUrl == null ||
+                savedUrl.trim().isEmpty() ||
+                savedUrl.trim().equals("https://shanu11.pythonanywhere.com") ||
+                savedUrl.trim().equals("http://localhost:5000")) {
+
+            brainUrl = "https://shanu11.pythonanywhere.com";
+
+            preferences.edit()
+                    .putString(BRAIN_URL_KEY, brainUrl)
+                    .apply();
+
+        } else {
+            brainUrl = savedUrl.trim();
+        }
+
+        brainExecutor.execute(() -> {
+            HttpURLConnection connection = null;
+
+            try {
+                String baseUrl = brainUrl;
+
+                while (baseUrl.endsWith("/")) {
+                    baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+                }
+
+                URL url = new URL(baseUrl + "/api/chat");
+
+                connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod("POST");
+                connection.setConnectTimeout(15000);
+                connection.setReadTimeout(60000);
+                connection.setDoOutput(true);
+
+                connection.setRequestProperty(
+                        "Content-Type",
+                        "application/json; charset=UTF-8"
+                );
+
+                connection.setRequestProperty(
+                        "Accept",
+                        "application/json"
+                );
+
+                JSONObject request = new JSONObject();
+                request.put("message", message);
+
+                byte[] body = request.toString()
+                        .getBytes(StandardCharsets.UTF_8);
+
+                connection.setFixedLengthStreamingMode(body.length);
+
+                try (OutputStream output = connection.getOutputStream()) {
+                    output.write(body);
+                    output.flush();
+                }
+
+                int status = connection.getResponseCode();
+
+                InputStream stream;
+
+                if (status >= 200 && status < 300) {
+                    stream = connection.getInputStream();
+                } else {
+                    stream = connection.getErrorStream();
+
+                    if (stream == null) {
+                        throw new Exception(
+                                "Jarvis Brain returned HTTP " + status
+                        );
+                    }
+                }
+
+                StringBuilder responseText = new StringBuilder();
+
+                try (BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(
+                                stream,
+                                StandardCharsets.UTF_8
+                        )
+                )) {
+                    String line;
+
+                    while ((line = reader.readLine()) != null) {
+                        responseText.append(line);
+                    }
+                }
+
+                JSONObject response = new JSONObject(
+                        responseText.toString()
+                );
+
+                if (status < 200 || status >= 300) {
+                    String error = response.optString(
+                            "error",
+                            "Jarvis Brain returned HTTP " + status
+                    );
+
+                    throw new Exception(error);
+                }
+
+                String reply = response.optString(
+                        "reply",
+                        ""
+                ).trim();
+
+                if (reply.isEmpty()) {
+                    throw new Exception(
+                            "Jarvis Brain returned an empty response."
+                    );
+                }
+
+                runOnUiThread(() -> showBrainReply(reply));
+
+            } catch (Exception e) {
+
+                String error = e.getMessage();
+
+                if (error == null || error.trim().isEmpty()) {
+                    error = e.getClass().getSimpleName();
+                }
+
+                final String finalError = error;
+
+                runOnUiThread(() -> {
+                    new AlertDialog.Builder(this)
+                            .setTitle("JARVIS BRAIN — ERROR")
+                            .setMessage(
+                                    "Could not reach Jarvis Brain.\n\n" +
+                                    finalError +
+                                    "\n\n" +
+                                    "Check Settings → Jarvis Brain " +
+                                    "to verify the server URL."
+                            )
+                            .setPositiveButton("OK", null)
+                            .show();
+                });
+
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
+            }
+        });
+    }
+
+    private void showBrainReply(String reply) {
+        new AlertDialog.Builder(this)
+                .setTitle("JARVIS")
+                .setMessage(reply)
+                .setPositiveButton("OK", null)
+                .show();
+    }
+
 
     // =========================================================
     // BRAIN STATUS
@@ -1347,13 +1529,13 @@ public class MainActivity extends AppCompatActivity {
         EditText input = new EditText(this);
 
         input.setHint(
-                "http://127.0.0.1:5000"
+                "https://shanu11.pythonanywhere.com"
         );
 
         input.setText(
                 preferences.getString(
                         BRAIN_URL_KEY,
-                        "http://127.0.0.1:5000"
+                        "https://shanu11.pythonanywhere.com"
                 )
         );
 
