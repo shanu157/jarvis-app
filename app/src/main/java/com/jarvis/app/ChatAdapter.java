@@ -132,21 +132,7 @@ public class ChatAdapter {
     }
 
     public void renderMessages() {
-        container.removeAllViews();
-
-        for (ChatMessage message : messages) {
-            if (message == null) continue;
-
-            if (message.isUser()) {
-                renderUser(message);
-            } else if (message.isAi()) {
-                renderAi(message);
-            } else if (message.isTyping()) {
-                renderTyping(message);
-            } else if (message.isSystem()) {
-                renderSystem(message);
-            }
-        }
+        render();
     }
 
     public void clear() {

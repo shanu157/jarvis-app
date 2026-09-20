@@ -409,6 +409,61 @@ public class ApiClient {
     public void sendVisionChat(
             String message,
             String imageBase64,
+            org.json.JSONArray conversation,
+            Callback callback
+    ) {
+        List<ChatMessage> messages = new ArrayList<>();
+
+        if (conversation != null) {
+            for (int i = 0; i < conversation.length(); i++) {
+                try {
+                    JSONObject item =
+                            conversation.optJSONObject(i);
+
+                    if (item == null) {
+                        continue;
+                    }
+
+                    String role =
+                            item.optString("role", "assistant");
+
+                    String content =
+                            item.optString("content", "");
+
+                    if (content.trim().isEmpty()) {
+                        continue;
+                    }
+
+                    int type =
+                            "user".equalsIgnoreCase(role)
+                                    ? ChatMessage.TYPE_USER
+                                    : ChatMessage.TYPE_AI;
+
+                    messages.add(
+                            new ChatMessage(
+                                    content,
+                                    type,
+                                    System.currentTimeMillis()
+                            )
+                    );
+
+                } catch (Exception ignored) {
+                }
+            }
+        }
+
+        sendVisionChat(
+                message,
+                imageBase64,
+                messages,
+                "",
+                callback
+        );
+    }
+
+    public void sendVisionChat(
+            String message,
+            String imageBase64,
             List<ChatMessage> conversation,
             String memories,
             Callback callback

@@ -240,6 +240,31 @@ public final class ActionParser {
             return confirmationRequired;
         }
 
+        public boolean requiresConfirmation() {
+            return ActionParser.requiresConfirmation(this);
+        }
+
+        public org.json.JSONObject toJson() {
+            org.json.JSONObject json = new org.json.JSONObject();
+
+            try {
+                json.put("type", type);
+                json.put("label", label);
+                json.put("time", time);
+                json.put("date", date);
+                json.put("phone", phone);
+                json.put("message", message);
+                json.put("url", url);
+                json.put("app", app);
+                json.put("duration_ms", durationMs);
+                json.put("confirm", confirmationRequired);
+            } catch (org.json.JSONException ignored) {
+            }
+
+            return json;
+        }
+
+
         public boolean isAlarm() {
             return "alarm".equals(type);
         }
