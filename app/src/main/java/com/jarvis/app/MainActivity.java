@@ -12,6 +12,8 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.hardware.camera2.CameraCharacteristics;
+import android.hardware.camera2.CameraManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
@@ -32,6 +34,8 @@ import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -62,6 +66,7 @@ public class MainActivity extends AppCompatActivity {
     private ArrayList<Entry> entries = new ArrayList<>();
 
     private CountDownTimer activeTimer;
+    private Boolean pendingTorchState = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -358,6 +363,10 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
+            if (handleLocalCommand(text)) {
+                return;
+            }
+
             showBrainDialog(text);
         };
 
@@ -618,6 +627,334 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
+    // =========================================================
+    // LOCAL PHONE COMMANDS
+    // =========================================================
+
+    private boolean handleLocalCommand(String original) {
+        String t = original.toLowerCase(Locale.ENGLISH).trim();
+
+        // Timetable / today's schedule stays completely local.
+        if ((t.contains("today") || t.contains("todays")) &&
+                (t.contains("timetable") ||
+                 t.contains("time table") ||
+                 t.contains("schedule") ||
+                 t.contains("classes"))) {
+            showToday();
+            return true;
+        }
+
+        // Flashlight / torch.
+        boolean torchMentioned =
+                t.contains("flashlight") || t.contains("torch");
+
+        if (torchMentioned &&
+                (t.contains("turn on") ||
+                 t.contains("switch on") ||
+                 t.contains(" on") ||
+                 t.endsWith("on"))) {
+            setJarvisTorch(true);
+            return true;
+        }
+
+        if (torchMentioned &&
+                (t.contains("turn off") ||
+                 t.contains("switch off") ||
+                 t.contains(" off") ||
+                 t.endsWith("off"))) {
+            setJarvisTorch(false);
+            return true;
+        }
+
+        // Alarm.
+        if (t.contains("alarm")) {
+            if (handleAlarmCommand(t)) {
+                return true;
+            }
+        }
+
+        // System timer.
+        if (t.contains("timer")) {
+            if (handleTimerCommand(t)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void setJarvisTorch(boolean enabled) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            Toast.makeText(
+                    this,
+                    "Torch control requires Android 6.0 or newer.",
+                    Toast.LENGTH_LONG
+            ).show();
+            return;
+        }
+
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.CAMERA
+        ) != PackageManager.PERMISSION_GRANTED) {
+            pendingTorchState = enabled;
+
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{Manifest.permission.CAMERA},
+                    2003
+            );
+
+            return;
+        }
+
+        try {
+            CameraManager manager =
+                    (CameraManager) getSystemService(
+                            Context.CAMERA_SERVICE
+                    );
+
+            if (manager == null) {
+                throw new Exception("Camera service unavailable.");
+            }
+
+            String selectedCamera = null;
+
+            for (String cameraId : manager.getCameraIdList()) {
+                CameraCharacteristics characteristics =
+                        manager.getCameraCharacteristics(cameraId);
+
+                Boolean hasFlash =
+                        characteristics.get(
+                                CameraCharacteristics.FLASH_INFO_AVAILABLE
+                        );
+
+                if (Boolean.TRUE.equals(hasFlash)) {
+                    selectedCamera = cameraId;
+                    break;
+                }
+            }
+
+            if (selectedCamera == null) {
+                throw new Exception("No flashlight was found on this phone.");
+            }
+
+            manager.setTorchMode(selectedCamera, enabled);
+
+            Toast.makeText(
+                    this,
+                    enabled
+                            ? "Flashlight turned on."
+                            : "Flashlight turned off.",
+                    Toast.LENGTH_SHORT
+            ).show();
+
+        } catch (Exception e) {
+            Toast.makeText(
+                    this,
+                    "Flashlight error: " + e.getMessage(),
+                    Toast.LENGTH_LONG
+            ).show();
+        }
+    }
+
+    private boolean handleAlarmCommand(String text) {
+        Pattern pattern = Pattern.compile(
+                "\\b(?:set|create|make)\\s+(?:an?\\s+)?alarm" +
+                "(?:\\s+(?:for|at))?\\s+" +
+                "(\\d{1,2})(?::|\\s+(?=\\d{2}))?(\\d{2})?" +
+                "\\s*(am|pm)?\\b"
+        );
+
+        Matcher matcher = pattern.matcher(text);
+
+        if (!matcher.find()) {
+            return false;
+        }
+
+        try {
+            int hour = Integer.parseInt(matcher.group(1));
+            String minuteText = matcher.group(2);
+            int minute = minuteText == null
+                    ? 0
+                    : Integer.parseInt(minuteText);
+
+            String ampm = matcher.group(3);
+
+            if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+                throw new Exception("Invalid alarm time.");
+            }
+
+            if (ampm != null) {
+                if (ampm.equals("pm") && hour < 12) {
+                    hour += 12;
+                }
+
+                if (ampm.equals("am") && hour == 12) {
+                    hour = 0;
+                }
+            } else if (hour > 12) {
+                // 13:30 style is already 24-hour time.
+            } else {
+                // For an ambiguous 1-12 time, use the next occurrence.
+                Calendar now = Calendar.getInstance();
+
+                int candidate24 = hour;
+                Calendar candidate = Calendar.getInstance();
+                candidate.set(
+                        Calendar.HOUR_OF_DAY,
+                        candidate24
+                );
+                candidate.set(Calendar.MINUTE, minute);
+                candidate.set(Calendar.SECOND, 0);
+                candidate.set(Calendar.MILLISECOND, 0);
+
+                if (!candidate.after(now)) {
+                    candidate24 += 12;
+                }
+
+                if (candidate24 >= 24) {
+                    candidate24 -= 24;
+                }
+
+                hour = candidate24;
+            }
+
+            Intent intent = new Intent(
+                    android.provider.AlarmClock.ACTION_SET_ALARM
+            );
+
+            intent.putExtra(
+                    android.provider.AlarmClock.EXTRA_HOUR,
+                    hour
+            );
+
+            intent.putExtra(
+                    android.provider.AlarmClock.EXTRA_MINUTES,
+                    minute
+            );
+
+            intent.putExtra(
+                    android.provider.AlarmClock.EXTRA_MESSAGE,
+                    "Jarvis alarm"
+            );
+
+            intent.putExtra(
+                    android.provider.AlarmClock.EXTRA_VIBRATE,
+                    true
+            );
+
+            intent.putExtra(
+                    android.provider.AlarmClock.EXTRA_SKIP_UI,
+                    true
+            );
+
+            if (intent.resolveActivity(getPackageManager()) == null) {
+                throw new Exception("No alarm app is available.");
+            }
+
+            startActivity(intent);
+
+            String display = String.format(
+                    Locale.getDefault(),
+                    "%02d:%02d",
+                    hour,
+                    minute
+            );
+
+            Toast.makeText(
+                    this,
+                    "Alarm set for " + display,
+                    Toast.LENGTH_LONG
+            ).show();
+
+            return true;
+
+        } catch (Exception e) {
+            Toast.makeText(
+                    this,
+                    "Alarm error: " + e.getMessage(),
+                    Toast.LENGTH_LONG
+            ).show();
+
+            return true;
+        }
+    }
+
+    private boolean handleTimerCommand(String text) {
+        Pattern pattern = Pattern.compile(
+                "\\b(?:set\\s+)?timer\\s+(?:for\\s+)?" +
+                "(\\d+)\\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?)\\b"
+        );
+
+        Matcher matcher = pattern.matcher(text);
+
+        if (!matcher.find()) {
+            return false;
+        }
+
+        try {
+            long value = Long.parseLong(matcher.group(1));
+            String unit = matcher.group(2).toLowerCase(Locale.ENGLISH);
+
+            long seconds;
+
+            if (unit.startsWith("hour") || unit.startsWith("hr")) {
+                seconds = value * 3600L;
+            } else if (unit.startsWith("min")) {
+                seconds = value * 60L;
+            } else {
+                seconds = value;
+            }
+
+            if (seconds <= 0 || seconds > 86400) {
+                throw new Exception("Timer must be between 1 second and 24 hours.");
+            }
+
+            Intent intent = new Intent(
+                    android.provider.AlarmClock.ACTION_SET_TIMER
+            );
+
+            intent.putExtra(
+                    android.provider.AlarmClock.EXTRA_LENGTH,
+                    (int) seconds
+            );
+
+            intent.putExtra(
+                    android.provider.AlarmClock.EXTRA_MESSAGE,
+                    "Jarvis timer"
+            );
+
+            intent.putExtra(
+                    android.provider.AlarmClock.EXTRA_SKIP_UI,
+                    true
+            );
+
+            if (intent.resolveActivity(getPackageManager()) == null) {
+                throw new Exception("No timer app is available.");
+            }
+
+            startActivity(intent);
+
+            Toast.makeText(
+                    this,
+                    "Timer started.",
+                    Toast.LENGTH_SHORT
+            ).show();
+
+            return true;
+
+        } catch (Exception e) {
+            Toast.makeText(
+                    this,
+                    "Timer error: " + e.getMessage(),
+                    Toast.LENGTH_LONG
+            ).show();
+
+            return true;
+        }
+    }
+
     private void sendToBrain(String message) {
         Toast.makeText(
                 this,
@@ -661,7 +998,7 @@ public class MainActivity extends AppCompatActivity {
 
                 connection = (HttpURLConnection) url.openConnection();
                 connection.setRequestMethod("POST");
-                connection.setConnectTimeout(15000);
+                connection.setConnectTimeout(30000);
                 connection.setReadTimeout(60000);
                 connection.setDoOutput(true);
 
@@ -1643,6 +1980,39 @@ public class MainActivity extends AppCompatActivity {
                     },
                     2002
             );
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(
+            int requestCode,
+            String[] permissions,
+            int[] grantResults
+    ) {
+        super.onRequestPermissionsResult(
+                requestCode,
+                permissions,
+                grantResults
+        );
+
+        if (requestCode == 2003) {
+            if (grantResults.length > 0 &&
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED &&
+                    pendingTorchState != null) {
+
+                boolean desiredState = pendingTorchState;
+                pendingTorchState = null;
+                setJarvisTorch(desiredState);
+
+            } else {
+                pendingTorchState = null;
+
+                Toast.makeText(
+                        this,
+                        "Camera permission is required for flashlight control.",
+                        Toast.LENGTH_LONG
+                ).show();
+            }
         }
     }
 
