@@ -78,6 +78,39 @@ public class ChatRepository {
         );
     }
 
+    public List<ChatMessage> getConversationList() {
+        List<ChatMessage> result = new java.util.ArrayList<>();
+        JSONArray array = getConversationJson();
+
+        for (int i = 0; i < array.length(); i++) {
+            try {
+                org.json.JSONObject item = array.optJSONObject(i);
+                if (item == null) continue;
+
+                String role = item.optString("role", "assistant");
+                String content = item.optString("content", "");
+
+                if (content.trim().isEmpty()) continue;
+
+                int type =
+                        "user".equalsIgnoreCase(role)
+                                ? ChatMessage.TYPE_USER
+                                : ChatMessage.TYPE_AI;
+
+                result.add(
+                        new ChatMessage(
+                                content,
+                                type,
+                                System.currentTimeMillis()
+                        )
+                );
+            } catch (Exception ignored) {
+            }
+        }
+
+        return result;
+    }
+
     public JSONArray getConversationJson() {
 
         try {

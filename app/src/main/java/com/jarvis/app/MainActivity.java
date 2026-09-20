@@ -421,7 +421,7 @@ public class MainActivity extends Activity
 
         apiClient.sendChat(
                 text,
-                repository.getConversationJson(),
+                repository.getConversationList(),
                 repository.getMemoryJson(),
                 timezone,
                 locale,
