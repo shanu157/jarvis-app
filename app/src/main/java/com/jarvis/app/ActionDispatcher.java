@@ -75,7 +75,7 @@ public class ActionDispatcher {
             return;
         }
 
-        if ("undo".equalsIgnoreCase(action.type)) {
+        if ("undo".equalsIgnoreCase(action.getType())) {
             undoLast();
             return;
         }
@@ -211,13 +211,13 @@ public class ActionDispatcher {
     ) {
 
         if (action == null ||
-                action.type == null) {
+                action.getType() == null) {
 
             return "Action completed.";
         }
 
         String type =
-                action.type.toLowerCase();
+                action.getType().toLowerCase();
 
         switch (type) {
 

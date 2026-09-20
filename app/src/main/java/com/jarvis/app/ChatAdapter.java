@@ -54,6 +54,11 @@ public class ChatAdapter {
         render();
     }
 
+    public void addMessageWithoutRender(ChatMessage message) {
+        if (message == null) return;
+        messages.add(message);
+    }
+
     public void addUserMessage(String text) {
         addMessage(
                 new ChatMessage(
@@ -124,6 +129,24 @@ public class ChatAdapter {
         );
 
         render();
+    }
+
+    public void renderMessages() {
+        container.removeAllViews();
+
+        for (ChatMessage message : messages) {
+            if (message == null) continue;
+
+            if (message.isUser()) {
+                renderUser(message);
+            } else if (message.isAi()) {
+                renderAi(message);
+            } else if (message.isTyping()) {
+                renderTyping(message);
+            } else if (message.isSystem()) {
+                renderSystem(message);
+            }
+        }
     }
 
     public void clear() {

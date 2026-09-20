@@ -177,13 +177,13 @@ public final class ActionConfirmationDialog {
     ) {
 
         if (action == null ||
-                action.type == null) {
+                action.getType() == null) {
 
             return "Confirm action";
         }
 
         String type =
-                action.type.toLowerCase();
+                action.getType().toLowerCase();
 
         switch (type) {
 
@@ -213,14 +213,14 @@ public final class ActionConfirmationDialog {
         }
 
         String type =
-                action.type == null
+                action.getType() == null
                         ? ""
-                        : action.type.toLowerCase();
+                        : action.getType().toLowerCase();
 
         if ("call".equals(type)) {
 
             String phone =
-                    safe(action.phone);
+                    safe(action.getPhone());
 
             if (phone.isEmpty()) {
                 return "JARVIS wants to start a phone call.";
@@ -232,10 +232,10 @@ public final class ActionConfirmationDialog {
         if ("sms".equals(type)) {
 
             String phone =
-                    safe(action.phone);
+                    safe(action.getPhone());
 
             String message =
-                    safe(action.message);
+                    safe(action.getMessage());
 
             if (phone.isEmpty()) {
                 return "JARVIS wants to send an SMS.";
@@ -255,7 +255,7 @@ public final class ActionConfirmationDialog {
         if ("forget_memory".equals(type)) {
 
             String label =
-                    safe(action.label);
+                    safe(action.getLabel());
 
             if (label.isEmpty()) {
                 return "JARVIS wants to forget stored memory.";
@@ -272,7 +272,7 @@ public final class ActionConfirmationDialog {
         }
 
         String label =
-                safe(action.label);
+                safe(action.getLabel());
 
         if (!label.isEmpty()) {
             return "JARVIS wants to perform:\n"

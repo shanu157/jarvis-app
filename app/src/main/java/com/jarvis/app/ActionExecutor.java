@@ -40,6 +40,22 @@ public class ActionExecutor {
         this.history = new ActionHistory(context);
     }
 
+    public void executeAction(JSONObject action) {
+        if (action == null) {
+            return;
+        }
+
+        JSONObject plan = new JSONObject();
+        try {
+            org.json.JSONArray actions = new org.json.JSONArray();
+            actions.put(action);
+            plan.put("actions", actions);
+            executePlan(plan, null);
+        } catch (org.json.JSONException e) {
+            android.util.Log.e("JARVIS", "Unable to execute action", e);
+        }
+    }
+
     public void executePlan(JSONObject plan, Callback callback) {
         try {
             JSONArray actions = plan.optJSONArray("actions");

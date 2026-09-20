@@ -213,6 +213,10 @@ public class SettingsStorage {
                 .apply();
     }
 
+    public void reset() {
+        resetSettings();
+    }
+
     public void resetSettings() {
 
         prefs.edit()
