@@ -263,7 +263,7 @@
                 android:layout_weight="1"
                 android:background="@android:color/transparent"
                 android:hint="Ask JARVIS anything..."
-                android:hintTextColor="#566377"
+                android:textColorHint="#566377"
                 android:textColor="#E8EDF5"
                 android:textColorHint="#566377"
                 android:textSize="16sp"
