@@ -154,11 +154,11 @@ public class MainActivity extends Activity
                             }
 
                             @Override
-                            public void onStart() {
+                            public void onStarted() {
                             }
 
                             @Override
-                            public void onDone() {
+                            public void onFinished() {
                             }
 
                             @Override

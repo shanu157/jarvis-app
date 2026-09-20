@@ -1,5 +1,7 @@
 package com.jarvis.app;
 
+import java.util.ArrayList;
+import java.util.List;
 import android.content.Context;
 import android.content.SharedPreferences;
 
@@ -91,7 +93,39 @@ public class MemoryManager {
         }
     }
 
-    public synchronized JSONArray getAll() {
+    public synchronized List<String> getAll() {
+        JSONArray memories = load();
+        List<String> result = new ArrayList<>();
+
+        for (int i = 0; i < memories.length(); i++) {
+            try {
+                JSONObject item = memories.optJSONObject(i);
+
+                if (item != null) {
+                    String value = item.optString("text", "");
+
+                    if (value.trim().isEmpty()) {
+                        value = item.optString("memory", "");
+                    }
+
+                    if (!value.trim().isEmpty()) {
+                        result.add(value.trim());
+                    }
+                } else {
+                    String value = memories.optString(i, "");
+
+                    if (!value.trim().isEmpty()) {
+                        result.add(value.trim());
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        return result;
+    }
+
+    public synchronized JSONArray getAllJson() {
         return load();
     }
 

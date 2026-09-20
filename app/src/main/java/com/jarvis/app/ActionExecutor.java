@@ -40,19 +40,31 @@ public class ActionExecutor {
         this.history = new ActionHistory(context);
     }
 
-    public void executeAction(JSONObject action) {
+    public String executeAction(JSONObject action) {
         if (action == null) {
-            return;
+            return "No action.";
         }
 
         JSONObject plan = new JSONObject();
+
         try {
-            org.json.JSONArray actions = new org.json.JSONArray();
+            org.json.JSONArray actions =
+                    new org.json.JSONArray();
+
             actions.put(action);
             plan.put("actions", actions);
+
             executePlan(plan, null);
+
+            return "Action started.";
         } catch (org.json.JSONException e) {
-            android.util.Log.e("JARVIS", "Unable to execute action", e);
+            android.util.Log.e(
+                    "JARVIS",
+                    "Unable to execute action",
+                    e
+            );
+
+            return "Unable to execute action.";
         }
     }
 
@@ -564,7 +576,7 @@ public class ActionExecutor {
         context.startActivity(launch);
     }
 
-    public void undoLast() {
+    public boolean undoLast() {
 
         JSONObject last = history.last();
 
@@ -574,7 +586,7 @@ public class ActionExecutor {
                     "Nothing to undo.",
                     Toast.LENGTH_SHORT
             ).show();
-            return;
+            return false;
         }
 
         try {
@@ -632,3 +644,6 @@ public class ActionExecutor {
         }
     }
 }
+
+        return true;
+    }

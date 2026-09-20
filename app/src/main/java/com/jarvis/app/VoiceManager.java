@@ -42,6 +42,14 @@ public class VoiceManager {
         return listening;
     }
 
+    public void start() {
+        startListening();
+    }
+
+    public void stop() {
+        stopListening();
+    }
+
     public void startListening() {
 
         if (!isAvailable()) {

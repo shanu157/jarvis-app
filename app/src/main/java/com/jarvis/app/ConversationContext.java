@@ -80,8 +80,8 @@ public class ConversationContext {
         return load();
     }
 
-    public synchronized String getJson() {
-        return load().toString();
+    public synchronized JSONArray getJson() {
+        return load();
     }
 
     public synchronized void clear() {

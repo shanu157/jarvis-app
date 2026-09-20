@@ -209,4 +209,19 @@ public class ChatStorage {
 
         save(messages);
     }
+    
+    public ChatMessage getLastUserMessage() {
+        List<ChatMessage> messages = load();
+
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            ChatMessage message = messages.get(i);
+
+            if (message != null && message.isUser()) {
+                return message;
+            }
+        }
+
+        return null;
+    }
+
 }
