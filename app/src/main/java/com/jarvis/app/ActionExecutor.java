@@ -641,9 +641,10 @@ public class ActionExecutor {
                     "Could not undo last action.",
                     Toast.LENGTH_SHORT
             ).show();
+
+            return false;
         }
-    }
-}
 
         return true;
     }
+}
