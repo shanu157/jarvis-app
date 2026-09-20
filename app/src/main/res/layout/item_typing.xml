@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="start"
+    android:paddingStart="4dp"
+    android:paddingEnd="48dp"
+    android:paddingTop="7dp"
+    android:paddingBottom="7dp">
+
+    <LinearLayout
+        android:id="@+id/typingBubble"
+        android:layout_width="wrap_content"
+        android:layout_height="52dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="18dp"
+        android:background="@drawable/bg_ai_message">
+
+        <TextView
+            android:id="@+id/typingName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="JARVIS"
+            android:textColor="#00BCD4"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08" />
+
+        <TextView
+            android:id="@+id/typingText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:text="Thinking  •  •  •"
+            android:textColor="#78879A"
+            android:textSize="13sp" />
+
+    </LinearLayout>
+
+</LinearLayout>

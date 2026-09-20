@@ -1,0 +1,342 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#03060B">
+
+    <!-- TOP BAR -->
+
+    <LinearLayout
+        android:id="@+id/topBar"
+        android:layout_width="match_parent"
+        android:layout_height="72dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="12dp"
+        android:background="#050911">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/titleText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="JARVIS"
+                android:textColor="#E8EDF5"
+                android:textSize="25sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.08" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="2dp">
+
+                <View
+                    android:id="@+id/onlineDot"
+                    android:layout_width="8dp"
+                    android:layout_height="8dp"
+                    android:background="#00D084" />
+
+                <TextView
+                    android:id="@+id/statusText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="7dp"
+                    android:text="SYSTEM ONLINE"
+                    android:textColor="#00D084"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.06" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/versionText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="15dp"
+            android:paddingEnd="15dp"
+            android:paddingTop="9dp"
+            android:paddingBottom="9dp"
+            android:text="v5.0"
+            android:textColor="#8290A5"
+            android:textSize="12sp"
+            android:background="#0B1421" />
+
+    </LinearLayout>
+
+
+    <!-- CHAT AREA -->
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <!-- Welcome -->
+
+        <LinearLayout
+            android:id="@+id/welcomePanel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingTop="20dp"
+            android:paddingBottom="12dp">
+
+            <TextView
+                android:id="@+id/greetingText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Good evening."
+                android:textColor="#E8EDF5"
+                android:textSize="28sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/subGreetingText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:text="What can I help you with?"
+                android:textColor="#78859A"
+                android:textSize="16sp" />
+
+        </LinearLayout>
+
+
+        <!-- CHAT TRANSCRIPT -->
+
+        <ScrollView
+            android:id="@+id/chatScroll"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:fillViewport="true"
+            android:clipToPadding="false"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="12dp"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/chatContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="4dp"
+                android:paddingBottom="20dp" />
+
+        </ScrollView>
+
+    </LinearLayout>
+
+
+    <!-- QUICK ACTIONS -->
+
+    <HorizontalScrollView
+        android:id="@+id/quickActionsScroll"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:id="@+id/quickActions"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/quickSchedule"
+                android:layout_width="wrap_content"
+                android:layout_height="38dp"
+                android:layout_marginEnd="8dp"
+                android:gravity="center"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:text="Schedule"
+                android:textColor="#B9C5D5"
+                android:textSize="13sp"
+                android:background="#0A1320" />
+
+            <TextView
+                android:id="@+id/quickTimer"
+                android:layout_width="wrap_content"
+                android:layout_height="38dp"
+                android:layout_marginEnd="8dp"
+                android:gravity="center"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:text="Timer"
+                android:textColor="#B9C5D5"
+                android:textSize="13sp"
+                android:background="#0A1320" />
+
+            <TextView
+                android:id="@+id/quickCalendar"
+                android:layout_width="wrap_content"
+                android:layout_height="38dp"
+                android:layout_marginEnd="8dp"
+                android:gravity="center"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:text="Calendar"
+                android:textColor="#B9C5D5"
+                android:textSize="13sp"
+                android:background="#0A1320" />
+
+            <TextView
+                android:id="@+id/quickVision"
+                android:layout_width="wrap_content"
+                android:layout_height="38dp"
+                android:layout_marginEnd="8dp"
+                android:gravity="center"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:text="Vision"
+                android:textColor="#B9C5D5"
+                android:textSize="13sp"
+                android:background="#0A1320" />
+
+            <TextView
+                android:id="@+id/quickMemory"
+                android:layout_width="wrap_content"
+                android:layout_height="38dp"
+                android:gravity="center"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:text="Memory"
+                android:textColor="#B9C5D5"
+                android:textSize="13sp"
+                android:background="#0A1320" />
+
+        </LinearLayout>
+
+    </HorizontalScrollView>
+
+
+    <!-- INPUT CARD -->
+
+    <LinearLayout
+        android:id="@+id/inputPanel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="10dp"
+        android:background="#050911">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="#0A1320"
+            android:paddingStart="14dp"
+            android:paddingEnd="8dp">
+
+            <EditText
+                android:id="@+id/messageInput"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:hint="Ask JARVIS anything..."
+                android:hintTextColor="#566377"
+                android:textColor="#E8EDF5"
+                android:textColorHint="#566377"
+                android:textSize="16sp"
+                android:gravity="center_vertical"
+                android:inputType="textCapSentences|textMultiLine"
+                android:maxLines="4"
+                android:paddingStart="2dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp" />
+
+            <ImageButton
+                android:id="@+id/clearInputButton"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:background="@android:color/transparent"
+                android:contentDescription="Clear message"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                android:tint="#68768B"
+                android:visibility="gone" />
+
+            <ImageButton
+                android:id="@+id/voiceButton"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="@android:color/transparent"
+                android:contentDescription="Voice input"
+                android:src="@android:drawable/ic_btn_speak_now"
+                android:tint="#00BCD4" />
+
+        </LinearLayout>
+
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="6dp">
+
+            <TextView
+                android:id="@+id/attachButton"
+                android:layout_width="0dp"
+                android:layout_height="42dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="+  Attach"
+                android:textColor="#AAB5C5"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/clearChatButton"
+                android:layout_width="0dp"
+                android:layout_height="42dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="Clear chat"
+                android:textColor="#8996A9"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/sendButton"
+                android:layout_width="0dp"
+                android:layout_height="42dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="➤  Send"
+                android:textColor="#00BCD4"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>
