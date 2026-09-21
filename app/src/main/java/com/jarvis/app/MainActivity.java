@@ -13,6 +13,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.content.Context;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -29,11 +30,11 @@ public class MainActivity extends Activity
         ActionDispatcher.Callback {
 
     private EditText messageInput;
-    private Button sendButton;
-    private Button clearInputButton;
-    private Button voiceButton;
-    private Button attachButton;
-    private Button clearChatButton;
+    private TextView sendButton;
+    private ImageButton clearInputButton;
+    private ImageButton voiceButton;
+    private TextView attachButton;
+    private TextView clearChatButton;
 
     private View quickSchedule;
     private View quickTimer;
