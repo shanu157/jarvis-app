@@ -629,6 +629,42 @@ public class MainActivity extends Activity
         );
     }
 
+    private String extractExplicitMemory(String text) {
+        if (text == null) {
+            return null;
+        }
+
+        String value = text.trim();
+
+        if (value.isEmpty()) {
+            return null;
+        }
+
+        String lower = value.toLowerCase(java.util.Locale.ROOT);
+
+        String[] prefixes = {
+                "remember that ",
+                "remember this: ",
+                "remember this ",
+                "remember: ",
+                "remember "
+        };
+
+        for (String prefix : prefixes) {
+            if (lower.startsWith(prefix)) {
+                String memory = value.substring(prefix.length()).trim();
+
+                if (!memory.isEmpty()) {
+                    return memory;
+                }
+
+                return null;
+            }
+        }
+
+        return null;
+    }
+
     private void sendTextMessage(
             String text
     ) {
@@ -640,6 +676,15 @@ public class MainActivity extends Activity
         repository.addUserMessage(
                 text
         );
+
+        String explicitMemory =
+                extractExplicitMemory(text);
+
+        if (explicitMemory != null) {
+            repository.remember(
+                    explicitMemory
+            );
+        }
 
         persistChat();
 
