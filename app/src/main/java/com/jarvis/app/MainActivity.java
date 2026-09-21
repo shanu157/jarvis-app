@@ -66,10 +66,55 @@ public class MainActivity extends Activity
     private Uri selectedAttachmentUri;
     private String selectedAttachmentMime;
 
+    private void installCrashLogger() {
+        final Thread.UncaughtExceptionHandler previous =
+                Thread.getDefaultUncaughtExceptionHandler();
+
+        Thread.setDefaultUncaughtExceptionHandler(
+                (thread, throwable) -> {
+                    try {
+                        java.io.File file =
+                                new java.io.File(
+                                        getFilesDir(),
+                                        "jarvis_crash.txt"
+                                );
+
+                        java.io.FileWriter writer =
+                                new java.io.FileWriter(file, false);
+
+                        writer.write(
+                                "THREAD: "
+                                        + thread.getName()
+                                        + "\n\n"
+                        );
+
+                        writer.write(
+                                android.util.Log.getStackTraceString(
+                                        throwable
+                                )
+                        );
+
+                        writer.flush();
+                        writer.close();
+                    } catch (Exception ignored) {
+                    }
+
+                    if (previous != null) {
+                        previous.uncaughtException(
+                                thread,
+                                throwable
+                        );
+                    }
+                }
+        );
+    }
+
     @Override
     protected void onCreate(
             Bundle savedInstanceState
     ) {
+
+        installCrashLogger();
 
         super.onCreate(savedInstanceState);
 
