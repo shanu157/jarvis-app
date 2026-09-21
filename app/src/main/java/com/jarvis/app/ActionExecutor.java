@@ -40,32 +40,23 @@ public class ActionExecutor {
         this.history = new ActionHistory(context);
     }
 
-    public String executeAction(JSONObject action) {
+    public String executeAction(JSONObject action) throws Exception {
         if (action == null) {
             return "No action.";
         }
 
-        JSONObject plan = new JSONObject();
+        StringBuilder output = new StringBuilder();
 
-        try {
-            org.json.JSONArray actions =
-                    new org.json.JSONArray();
+        executeSingle(
+                action,
+                output
+        );
 
-            actions.put(action);
-            plan.put("actions", actions);
+        String result = output.toString().trim();
 
-            executePlan(plan, null);
-
-            return "Action started.";
-        } catch (org.json.JSONException e) {
-            android.util.Log.e(
-                    "JARVIS",
-                    "Unable to execute action",
-                    e
-            );
-
-            return "Unable to execute action.";
-        }
+        return result.isEmpty()
+                ? "Action completed."
+                : result;
     }
 
     public void executePlan(JSONObject plan, Callback callback) {
