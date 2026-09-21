@@ -328,101 +328,197 @@ public class MainActivity extends Activity
 
     private void setupUi() {
 
-        messageInput =
-                findViewById(
-                        R.id.messageInput
-                );
+        String stage = "setupUi";
 
-        sendButton =
-                findViewById(
-                        R.id.sendButton
-                );
+        try {
 
-        clearInputButton =
-                findViewById(
-                        R.id.clearInputButton
-                );
+            stage = "messageInput";
+            messageInput = findViewById(R.id.messageInput);
+            android.util.Log.e(
+                    "JARVIS_SETUP",
+                    "messageInput = "
+                            + (messageInput == null
+                            ? "NULL"
+                            : messageInput.getClass().getName())
+            );
 
-        voiceButton =
-                findViewById(
-                        R.id.voiceButton
-                );
+            stage = "sendButton";
+            sendButton = findViewById(R.id.sendButton);
+            android.util.Log.e(
+                    "JARVIS_SETUP",
+                    "sendButton = "
+                            + (sendButton == null
+                            ? "NULL"
+                            : sendButton.getClass().getName())
+            );
 
-        attachButton =
-                findViewById(
-                        R.id.attachButton
-                );
+            stage = "clearInputButton";
+            clearInputButton = findViewById(R.id.clearInputButton);
+            android.util.Log.e(
+                    "JARVIS_SETUP",
+                    "clearInputButton = "
+                            + (clearInputButton == null
+                            ? "NULL"
+                            : clearInputButton.getClass().getName())
+            );
 
-        clearChatButton =
-                findViewById(
-                        R.id.clearChatButton
-                );
+            stage = "voiceButton";
+            voiceButton = findViewById(R.id.voiceButton);
+            android.util.Log.e(
+                    "JARVIS_SETUP",
+                    "voiceButton = "
+                            + (voiceButton == null
+                            ? "NULL"
+                            : voiceButton.getClass().getName())
+            );
 
-        statusText =
-                findViewById(
-                        R.id.statusText
-                );
+            stage = "attachButton";
+            attachButton = findViewById(R.id.attachButton);
+            android.util.Log.e(
+                    "JARVIS_SETUP",
+                    "attachButton = "
+                            + (attachButton == null
+                            ? "NULL"
+                            : attachButton.getClass().getName())
+            );
 
-        quickSchedule =
-                findViewById(
-                        R.id.quickSchedule
-                );
+            stage = "clearChatButton";
+            clearChatButton = findViewById(R.id.clearChatButton);
+            android.util.Log.e(
+                    "JARVIS_SETUP",
+                    "clearChatButton = "
+                            + (clearChatButton == null
+                            ? "NULL"
+                            : clearChatButton.getClass().getName())
+            );
 
-        quickTimer =
-                findViewById(
-                        R.id.quickTimer
-                );
+            stage = "statusText";
+            statusText = findViewById(R.id.statusText);
+            android.util.Log.e(
+                    "JARVIS_SETUP",
+                    "statusText = "
+                            + (statusText == null
+                            ? "NULL"
+                            : statusText.getClass().getName())
+            );
 
-        quickCalendar =
-                findViewById(
-                        R.id.quickCalendar
-                );
+            stage = "quickSchedule";
+            quickSchedule = findViewById(R.id.quickSchedule);
+            android.util.Log.e(
+                    "JARVIS_SETUP",
+                    "quickSchedule = "
+                            + (quickSchedule == null
+                            ? "NULL"
+                            : quickSchedule.getClass().getName())
+            );
 
-        quickVision =
-                findViewById(
-                        R.id.quickVision
-                );
+            stage = "quickTimer";
+            quickTimer = findViewById(R.id.quickTimer);
+            android.util.Log.e(
+                    "JARVIS_SETUP",
+                    "quickTimer = "
+                            + (quickTimer == null
+                            ? "NULL"
+                            : quickTimer.getClass().getName())
+            );
 
-        quickMemory =
-                findViewById(
-                        R.id.quickMemory
-                );
+            stage = "quickCalendar";
+            quickCalendar = findViewById(R.id.quickCalendar);
+            android.util.Log.e(
+                    "JARVIS_SETUP",
+                    "quickCalendar = "
+                            + (quickCalendar == null
+                            ? "NULL"
+                            : quickCalendar.getClass().getName())
+            );
 
-        sendButton.setOnClickListener(
-                v -> sendCurrentMessage()
-        );
+            stage = "quickVision";
+            quickVision = findViewById(R.id.quickVision);
+            android.util.Log.e(
+                    "JARVIS_SETUP",
+                    "quickVision = "
+                            + (quickVision == null
+                            ? "NULL"
+                            : quickVision.getClass().getName())
+            );
 
-        clearInputButton.setOnClickListener(
-                v -> clearInput()
-        );
+            stage = "quickMemory";
+            quickMemory = findViewById(R.id.quickMemory);
+            android.util.Log.e(
+                    "JARVIS_SETUP",
+                    "quickMemory = "
+                            + (quickMemory == null
+                            ? "NULL"
+                            : quickMemory.getClass().getName())
+            );
 
-        clearChatButton.setOnClickListener(
-                v -> clearChat()
-        );
+            stage = "sendButton listener";
+            sendButton.setOnClickListener(
+                    v -> sendCurrentMessage()
+            );
 
-        voiceButton.setOnClickListener(
-                v -> toggleVoice()
-        );
+            stage = "clearInputButton listener";
+            clearInputButton.setOnClickListener(
+                    v -> clearInput()
+            );
 
-        attachButton.setOnClickListener(
-                v -> openAttachmentMenu()
-        );
+            stage = "clearChatButton listener";
+            clearChatButton.setOnClickListener(
+                    v -> clearChat()
+            );
 
-        setupQuickActions();
+            stage = "voiceButton listener";
+            voiceButton.setOnClickListener(
+                    v -> toggleVoice()
+            );
 
-        messageInput.setOnEditorActionListener(
-                (v, actionId, event) -> {
+            stage = "attachButton listener";
+            attachButton.setOnClickListener(
+                    v -> openAttachmentMenu()
+            );
 
-                    if (settings.isEnterToSendEnabled()) {
+            stage = "setupQuickActions";
+            setupQuickActions();
 
-                        sendCurrentMessage();
+            stage = "editor listener";
+            messageInput.setOnEditorActionListener(
+                    (v, actionId, event) -> {
 
-                        return true;
+                        if (settings.isEnterToSendEnabled()) {
+
+                            sendCurrentMessage();
+
+                            return true;
+                        }
+
+                        return false;
                     }
+            );
 
-                    return false;
-                }
-        );
+            android.util.Log.e(
+                    "JARVIS_SETUP",
+                    "=== setupUi COMPLETE ==="
+            );
+
+        } catch (Throwable throwable) {
+
+            android.util.Log.e(
+                    "JARVIS_SETUP",
+                    "SETUP UI FAILED at: " + stage,
+                    throwable
+            );
+
+            try {
+                Toast.makeText(
+                        this,
+                        "JARVIS UI failed at: " + stage,
+                        Toast.LENGTH_LONG
+                ).show();
+            } catch (Throwable ignored) {
+            }
+
+            throw throwable;
+        }
     }
 
     private void setupQuickActions() {
