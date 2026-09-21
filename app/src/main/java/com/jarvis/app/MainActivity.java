@@ -123,19 +123,109 @@ public class MainActivity extends Activity
 
         installCrashLogger();
 
-        super.onCreate(savedInstanceState);
+        String stage = "startup";
 
-        setContentView(
-                R.layout.activity_main
-        );
+        try {
+            android.util.Log.e(
+                    "JARVIS_STARTUP",
+                    "=== JARVIS STARTUP BEGIN ==="
+            );
 
-        initialize();
+            stage = "super.onCreate";
+            super.onCreate(savedInstanceState);
 
-        setupUi();
+            android.util.Log.e(
+                    "JARVIS_STARTUP",
+                    "super.onCreate OK"
+            );
 
-        restoreChat();
+            stage = "setContentView";
+            setContentView(
+                    R.layout.activity_main
+            );
 
-        checkFirstRun();
+            android.util.Log.e(
+                    "JARVIS_STARTUP",
+                    "setContentView OK"
+            );
+
+            stage = "initialize";
+            initialize();
+
+            android.util.Log.e(
+                    "JARVIS_STARTUP",
+                    "initialize OK"
+            );
+
+            stage = "setupUi";
+            setupUi();
+
+            android.util.Log.e(
+                    "JARVIS_STARTUP",
+                    "setupUi OK"
+            );
+
+            stage = "restoreChat";
+            restoreChat();
+
+            android.util.Log.e(
+                    "JARVIS_STARTUP",
+                    "restoreChat OK"
+            );
+
+            stage = "checkFirstRun";
+            checkFirstRun();
+
+            android.util.Log.e(
+                    "JARVIS_STARTUP",
+                    "=== JARVIS STARTUP COMPLETE ==="
+            );
+
+        } catch (Throwable throwable) {
+
+            android.util.Log.e(
+                    "JARVIS_STARTUP",
+                    "STARTUP FAILED at stage: " + stage,
+                    throwable
+            );
+
+            try {
+                java.io.File file =
+                        new java.io.File(
+                                getFilesDir(),
+                                "jarvis_startup_error.txt"
+                        );
+
+                java.io.FileWriter writer =
+                        new java.io.FileWriter(file, false);
+
+                writer.write(
+                        "JARVIS STARTUP FAILURE\n\n"
+                                + "Stage: "
+                                + stage
+                                + "\n\n"
+                                + android.util.Log.getStackTraceString(
+                                        throwable
+                                )
+                );
+
+                writer.flush();
+                writer.close();
+
+            } catch (Throwable ignored) {
+            }
+
+            try {
+                Toast.makeText(
+                        this,
+                        "JARVIS startup failed at: " + stage,
+                        Toast.LENGTH_LONG
+                ).show();
+            } catch (Throwable ignored) {
+            }
+
+            throw throwable;
+        }
     }
 
     private void initialize() {
