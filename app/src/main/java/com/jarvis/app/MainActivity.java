@@ -72,6 +72,13 @@ public class MainActivity extends Activity
 
         Thread.setDefaultUncaughtExceptionHandler(
                 (thread, throwable) -> {
+                    android.util.Log.e(
+                            "JARVIS_CRASH",
+                            "UNCAUGHT EXCEPTION in thread: "
+                                    + thread.getName(),
+                            throwable
+                    );
+
                     try {
                         java.io.File file =
                                 new java.io.File(
