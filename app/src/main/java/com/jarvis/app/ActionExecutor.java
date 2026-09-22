@@ -34,10 +34,12 @@ public class ActionExecutor {
 
     private final Context context;
     private final ActionHistory history;
+    private final AppLauncher appLauncher;
 
     public ActionExecutor(Context context) {
         this.context = context.getApplicationContext();
         this.history = new ActionHistory(context);
+        this.appLauncher = new AppLauncher(this.context);
     }
 
     public String executeAction(JSONObject action) throws Exception {
@@ -163,8 +165,7 @@ public class ActionExecutor {
                 break;
 
             case "open_app":
-                openApp(action.optString("package"));
-                output.append("Opening the app.\n");
+                openApp(action, output);
                 break;
 
             default:
@@ -537,34 +538,77 @@ public class ActionExecutor {
         context.startActivity(intent);
     }
 
-    private void openApp(String packageName)
-            throws Exception {
+    private void openApp(
+            JSONObject action,
+            StringBuilder output
+    ) throws Exception {
 
-        if (packageName == null
-                || packageName.trim().isEmpty()) {
+        if (action == null) {
+            throw new Exception("No app specified.");
+        }
+
+        /*
+         * The planner may provide either:
+         *
+         *   {"app":"youtube"}
+         *   {"name":"youtube"}
+         *   {"package":"com.google.android.youtube"}
+         *
+         * Prefer an explicit package, otherwise let AppLauncher
+         * resolve the human-friendly app name.
+         */
+        String packageName =
+                action.optString("package", "").trim();
+
+        String appName =
+                action.optString("app", "").trim();
+
+        if (appName.isEmpty()) {
+            appName =
+                    action.optString("name", "").trim();
+        }
+
+        boolean opened = false;
+
+        if (!packageName.isEmpty()) {
+
+            opened =
+                    appLauncher.open(packageName);
+
+        } else if (!appName.isEmpty()) {
+
+            opened =
+                    appLauncher.open(appName);
+        }
+
+        if (!opened) {
+
+            String requested =
+                    !appName.isEmpty()
+                            ? appName
+                            : packageName;
+
+            if (requested.isEmpty()) {
+                throw new Exception(
+                        "No application specified."
+                );
+            }
 
             throw new Exception(
-                    "No application package."
+                    "Application not installed or cannot be opened: "
+                            + requested
             );
         }
 
-        Intent launch =
-                context.getPackageManager()
-                        .getLaunchIntentForPackage(
-                                packageName
-                        );
-
-        if (launch == null) {
-            throw new Exception(
-                    "Application not installed."
-            );
-        }
-
-        launch.addFlags(
-                Intent.FLAG_ACTIVITY_NEW_TASK
+        output.append(
+                "Opening "
+                        + (
+                            !appName.isEmpty()
+                                    ? appName
+                                    : packageName
+                        )
+                        + ".\n"
         );
-
-        context.startActivity(launch);
     }
 
     public boolean undoLast() {
