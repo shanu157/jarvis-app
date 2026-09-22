@@ -123,6 +123,12 @@ public final class ActionParser {
                         false
                 );
 
+        boolean enabled =
+                object.optBoolean(
+                        "enabled",
+                        true
+                );
+
         return new ParsedAction(
                 type,
                 label,
@@ -133,7 +139,8 @@ public final class ActionParser {
                 url,
                 app,
                 duration,
-                confirm
+                confirm,
+                enabled
         );
     }
 
@@ -173,6 +180,7 @@ public final class ActionParser {
         private final String app;
         private final long durationMs;
         private final boolean confirmationRequired;
+        private final boolean enabled;
 
         public ParsedAction(
                 String type,
@@ -184,7 +192,8 @@ public final class ActionParser {
                 String url,
                 String app,
                 long durationMs,
-                boolean confirmationRequired
+                boolean confirmationRequired,
+                boolean enabled
         ) {
 
             this.type = type;
@@ -198,6 +207,8 @@ public final class ActionParser {
             this.durationMs = durationMs;
             this.confirmationRequired =
                     confirmationRequired;
+
+            this.enabled = enabled;
         }
 
         public String getType() {
@@ -258,6 +269,7 @@ public final class ActionParser {
                 json.put("app", app);
                 json.put("duration_ms", durationMs);
                 json.put("confirm", confirmationRequired);
+                json.put("enabled", enabled);
             } catch (org.json.JSONException ignored) {
             }
 
@@ -279,6 +291,10 @@ public final class ActionParser {
 
         public boolean isTimer() {
             return "timer".equals(type);
+        }
+
+        public boolean isEnabled() {
+            return enabled;
         }
 
         public boolean isTorch() {
