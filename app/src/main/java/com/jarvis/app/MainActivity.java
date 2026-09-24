@@ -44,6 +44,8 @@ public class MainActivity extends Activity
 
     private ScrollView chatScroll;
     private TextView statusText;
+    private TextView googleAccountButton;
+    private GoogleSignInManager googleSignInManager;
 
     private ChatAdapter chatAdapter;
     private ChatController chatController;
@@ -325,6 +327,9 @@ public class MainActivity extends Activity
                         actionHistory,
                         this
                 );
+
+        googleSignInManager =
+                new GoogleSignInManager(this);
     }
 
     private void setupUi() {
@@ -403,6 +408,17 @@ public class MainActivity extends Activity
                             : statusText.getClass().getName())
             );
 
+            stage = "googleAccountButton";
+            googleAccountButton =
+                    findViewById(R.id.googleAccountButton);
+            android.util.Log.e(
+                    "JARVIS_SETUP",
+                    "googleAccountButton = "
+                            + (googleAccountButton == null
+                            ? "NULL"
+                            : googleAccountButton.getClass().getName())
+            );
+
             stage = "quickSchedule";
             quickSchedule = findViewById(R.id.quickSchedule);
             android.util.Log.e(
@@ -478,6 +494,11 @@ public class MainActivity extends Activity
                     v -> openAttachmentMenu()
             );
 
+            stage = "googleAccountButton listener";
+            googleAccountButton.setOnClickListener(
+                    v -> startGoogleSignIn()
+            );
+
             stage = "setupQuickActions";
             setupQuickActions();
 
@@ -520,6 +541,81 @@ public class MainActivity extends Activity
 
             throw throwable;
         }
+    }
+
+    private void startGoogleSignIn() {
+
+        if (googleSignInManager == null) {
+            Toast.makeText(
+                    this,
+                    "Google Sign-In is not ready.",
+                    Toast.LENGTH_SHORT
+            ).show();
+            return;
+        }
+
+        googleAccountButton.setEnabled(false);
+        googleAccountButton.setText("SIGNING IN...");
+
+        googleSignInManager.signIn(
+                this,
+                new GoogleSignInManager.Callback() {
+
+                    @Override
+                    public void onSuccess(
+                            String idToken,
+                            String displayName,
+                            String email,
+                            String profilePictureUri
+                    ) {
+
+                        runOnUiThread(() -> {
+
+                            googleAccountButton.setEnabled(true);
+
+                            String name = displayName;
+
+                            if (name == null || name.trim().isEmpty()) {
+                                name = email;
+                            }
+
+                            if (name == null || name.trim().isEmpty()) {
+                                name = "GOOGLE";
+                            }
+
+                            googleAccountButton.setText(
+                                    name.trim()
+                            );
+
+                            statusText.setText(
+                                    "GOOGLE ACCOUNT CONNECTED"
+                            );
+
+                            Toast.makeText(
+                                    MainActivity.this,
+                                    "Signed in as " + name.trim(),
+                                    Toast.LENGTH_SHORT
+                            ).show();
+                        });
+                    }
+
+                    @Override
+                    public void onError(String message) {
+
+                        runOnUiThread(() -> {
+
+                            googleAccountButton.setEnabled(true);
+                            googleAccountButton.setText("SIGN IN");
+
+                            Toast.makeText(
+                                    MainActivity.this,
+                                    message,
+                                    Toast.LENGTH_LONG
+                            ).show();
+                        });
+                    }
+                }
+        );
     }
 
     private void setupQuickActions() {
